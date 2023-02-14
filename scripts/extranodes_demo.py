@@ -9,7 +9,6 @@ from sklearn.cluster import KMeans
 import time
 import pandas as pd
 from PIL import Image
-from skimage.util import random_noise
 
 
 from extranodes import segment
@@ -19,9 +18,10 @@ import warnings
 warnings.simplefilter("ignore", np.ComplexWarning)
 
 
+
 """ 
 INDICATE WHAT TYPE OF TEST YOU'D LIKE TO RUN:
-- Custom Image: Set TEST_TYPE = "CUSTOM"
+- Custom Image: Set TEST_TYPE = "COLOR"
 - Preset Gaussian-Noisy Synthetic Image Tests: Set TEST_TYPE = "PRESET GAUSS"
 - Preset Salt-and-Pepper Noisy Synthetic Image Tests: Set TEST_TYPE = "PRESET SP"
 - Preset Color segmentation tests: Set TEST_TYPE = "PRESET COLOR"
@@ -29,15 +29,21 @@ INDICATE WHAT TYPE OF TEST YOU'D LIKE TO RUN:
 """
 
 
-TEST_TYPE  = "PRESET GAUSS"
 
-"""IF CUSTOM, PLEASE INDICATE IMAGE PATH"""
+
+TEST_TYPE  = "COLOR"
+
+"""PLEASE INDICATE IMAGE PATH"""
 
 IMAGE_PATH = "figures/knot.jpg"
 
+"""SPECIFY MU AND SIGMA"""
+SIGMA_C = 0
+MU = 100
+
 def main():
-    if TEST_TYPE == "CUSTOM":
-        return  custom_seg(IMAGE_PATH)
+    if TEST_TYPE == "COLOR":
+        return  color_seg(IMAGE_PATH, SIGMA_C, MU)
     elif TEST_TYPE == "PRESET GAUSS":
         return synthetic_gauss_tests()
     elif TEST_TYPE == "PRESET SP":
@@ -55,7 +61,7 @@ def main():
 ######################################################
 
 
-def custom_seg(img_path):
+def color_seg(img_path, sigma_C, mu):
     time_array = []
     img_rgb = (Image.open(img_path))
     img_rgb = np.asarray(img_rgb)
@@ -71,32 +77,18 @@ def custom_seg(img_path):
     real_img_array  = np.reshape(img_labels, (img_rgb.shape[0], img_rgb.shape[1]), order = "C").astype("uint8")
 
     
-    sigma_C = 0
-    list_L = np.append(np.linspace(0, 100, 25), [150, 200, 300, 400, 500])
-    for l in list_L:
-        start_seg = time.time()
-        img_segment = segment(real_img_array, sigma_C, l)
-        end_seg = time.time()
-        seg_time = end_seg - start_seg
-        print(f"segmentation finished in time {seg_time} seconds")
+    start_seg = time.time()
+    img_segment = segment(real_img_array, sigma_C, mu)
+    end_seg = time.time()
+    seg_time = end_seg - start_seg
+    print(f"segmentation finished in time {seg_time} seconds")
 
-        seg_image_color = (img_segment[0]).reshape((real_img_array.shape[0], real_img_array.shape[1]), order="C")
-        plt.imsave(f"custom-tests/sigma0_mu{l}_segment.png", seg_image_color, cmap = "gray")
-        plt.clf()
-        inverse_seg_image = np.logical_not((img_segment[0]).reshape((real_img_array.shape[0], real_img_array.shape[1]), order="C"))
-        plt.imsave(f"custom-tests/sigma0_mu{l}_inverse.png", inverse_seg_image, cmap = "gray")
-        plt.clf()
-        seg_eigen =img_segment[3]
-        plt.imsave(f"custom-tests/eigenvector/sigma0_mu{l}_eigenvector.png", seg_eigen, cmap = "gray")
-        plt.clf()
-        inv_eigen = -img_segment[3]
-        plt.imsave(f"custom-tests/eigenvector/sigma0_mu{l}_eigenvector_inverse.png", inv_eigen, cmap = "gray")
-        plt.clf()
-
-        time_array.append([sigma_C, l, seg_time])
-
-    mu_df = pd.DataFrame (time_array, columns = ["sigma_c", "mu", "time"])
-    mu_df.to_csv(f'custom-tests/mu_color_times.csv')
+    seg_image_color = (img_segment[0]).reshape((real_img_array.shape[0], real_img_array.shape[1]), order="C")
+    plt.imshow(seg_image_color, cmap = "gray")
+    plt.axis('off')
+    plt.title(f"σ = {SIGMA_C}, µ = {MU}")
+    plt.show()
+    
 
 
 
